@@ -1,0 +1,60 @@
+[
+  {
+    "id": "summary_notes1",
+    "task_type": "summary",
+    "query": "Summarize this document",
+    "filenames": ["notes1.txt"],
+    "expected_behavior": [
+      "mentions ingestion pipeline",
+      "mentions PostgreSQL with pgvector",
+      "mentions Cohere reranking",
+      "includes citations"
+    ]
+  },
+  {
+    "id": "action_items_notes1",
+    "task_type": "action_items",
+    "query": "Extract the action items from this document",
+    "filenames": ["notes1.txt"],
+    "expected_behavior": [
+      "returns 3 explicit action items",
+      "includes citations",
+      "does not invent extra tasks"
+    ]
+  },
+  {
+    "id": "compare_notes1_notes2",
+    "task_type": "comparison",
+    "query": "Compare these two project documents",
+    "filenames": ["notes1.txt", "notes2.txt"],
+    "expected_behavior": [
+      "includes overview",
+      "includes meaningful similarities",
+      "includes meaningful differences",
+      "includes grounded conclusion"
+    ]
+  },
+  {
+    "id": "compare_notes1_noise",
+    "task_type": "comparison",
+    "query": "Compare these two documents",
+    "filenames": ["notes1.txt", "noise.txt"],
+    "expected_behavior": [
+      "emphasizes meaningful differences",
+      "does not invent strong similarities",
+      "includes grounded conclusion"
+    ]
+  },
+  {
+    "id": "approval_flow_monday",
+    "task_type": "approval_flow",
+    "query": "Extract the action items from this document",
+    "filenames": ["notes1.txt"],
+    "post_actions": ["create_monday_items"],
+    "expected_behavior": [
+      "returns awaiting approval",
+      "creates pending approval record",
+      "does not execute external action before approval"
+    ]
+  }
+]

@@ -2,21 +2,24 @@
 
 A document-centric AI agent that ingests unstructured files and turns them into searchable, actionable knowledge.
 
-The system supports semantic document search, grounded summarization, action-item extraction, document comparison, and controlled workflow actions such as sending summaries to Slack and creating tasks in Monday.com.
+It supports semantic document search, grounded summarization, action-item extraction, document comparison, and controlled workflow actions such as sending summaries to Slack and creating tasks in Monday.com.
 
 ## What this project does
 
-This project is built to solve a common problem in real-world teams: important information lives inside unstructured documents, but it is difficult to search, summarize, compare, and operationalize reliably.
+This project solves a common problem in real-world teams: important information lives inside unstructured documents, but it is difficult to search, summarize, compare, and operationalize reliably.
 
 The system processes uploaded documents, stores chunk embeddings in PostgreSQL with pgvector, retrieves relevant context with semantic search and reranking, and uses GPT-4o to produce structured, source-grounded outputs.
 
-It also includes an agent orchestration layer that selects the right analysis tool for the user’s request and supports human-in-the-loop approval before external write actions.
+It also includes:
+- tool-based agent orchestration for selecting the right analysis capability
+- human-in-the-loop approval before external write actions
+- an offline evaluation layer with deterministic checks and LLM-as-a-Judge scoring
 
 ## Core capabilities
 
 - Upload and process `PDF`, `DOCX`, and `TXT` documents
 - Parse and chunk documents with overlap
-- Store embeddings in PostgreSQL using `pgvector`
+- Store embeddings in PostgreSQL using pgvector
 - Perform semantic retrieval with OpenAI embeddings
 - Improve retrieval quality with Cohere reranking
 - Support tool-based agent orchestration with LangChain
@@ -29,7 +32,7 @@ It also includes an agent orchestration layer that selects the right analysis to
 
 ## Architecture overview
 
-The system is built in two main stages.
+The system is built in two stages.
 
 ### 1. Offline document processing
 Documents are uploaded and processed before runtime:
@@ -64,51 +67,6 @@ At runtime:
 - **External integrations:** Slack Incoming Webhooks, Monday.com GraphQL API
 - **Containerization:** Docker, Docker Compose
 
-## Project structure
-
-```text
-document-intelligence-agent/
-├── app/
-│   ├── main.py
-│   ├── config.py
-│   ├── schemas.py
-│   ├── llm.py
-│   ├── routes.py
-│   │
-│   ├── db/
-│   │   ├── session.py
-│   │   └── models.py
-│   │
-│   ├── ingestion/
-│   │   ├── parsers.py
-│   │   ├── chunking.py
-│   │   └── pipeline.py
-│   │
-│   ├── retrieval/
-│   │   ├── embeddings.py
-│   │   ├── rerank.py
-│   │   └── pipeline.py
-│   │
-│   ├── agent/
-│   │   ├── orchestrator.py
-│   │   ├── tools.py
-│   │   └── prompts.py
-│   │
-│   ├── integrations/
-│   │   ├── slack.py
-│   │   └── monday.py
-│   │
-│   └── services/
-│       └── approval_service.py
-│
-├── tests/
-├── Dockerfile
-├── docker-compose.yml
-├── .env.example
-├── pyproject.toml
-└── README.md
-```
-
 ## Main analysis tools
 
 The agent selects one of the following analysis tools:
@@ -136,6 +94,22 @@ This is used for:
 - `send_summary_to_slack`
 - `create_monday_items`
 
+## Evaluation layer
+
+The project includes an offline evaluation layer for measuring output quality and workflow correctness.
+
+It combines:
+- curated eval cases
+- deterministic checks
+- LLM-as-a-Judge scoring
+- JSON report generation
+
+The main evaluation dimensions are:
+- relevance
+- groundedness
+- completeness
+- approval workflow correctness
+
 ## Data model
 
 The project persists the following entities:
@@ -153,54 +127,14 @@ This provides:
 
 ## API endpoints
 
-### Health
 - `GET /health`
-
-### Document ingestion
 - `POST /documents/upload`
-
-### Direct capability endpoints
 - `POST /search`
 - `POST /summarize`
 - `POST /action-items`
 - `POST /compare`
-
-### Agent endpoint
 - `POST /agent/run`
-
-### Approval endpoint
 - `POST /post-actions/decision`
-
-## Example workflows
-
-### 1. Grounded document summary
-- upload a document
-- call `/agent/run` with a summary request
-- receive a structured summary with citations
-
-### 2. Extract action items
-- upload meeting notes
-- call `/agent/run` or `/action-items`
-- receive structured action items with owners, due dates, and citations
-
-### 3. Compare documents
-- upload two project documents
-- call `/compare` or `/agent/run`
-- receive overview, similarities, differences, and conclusion with grounding
-
-### 4. Slack delivery with approval
-- request a summary with `post_actions=["send_summary_to_slack"]`
-- set `require_approval=true`
-- receive `pending_approval`
-- approve through `/post-actions/decision`
-- send summary to Slack
-
-### 5. Monday task creation with approval
-- request action extraction with `post_actions=["create_monday_items"]`
-- set `require_approval=true`
-- receive `pending_approval`
-- approve through `/post-actions/decision`
-- create tasks in Monday.com
 
 ## How to run locally
 
@@ -240,17 +174,17 @@ Run tests inside the API container:
 docker compose exec api python -m pytest -q
 ```
 
-The validation flow used during development covered:
-- ingestion
-- search
-- summarization
-- action-item extraction
-- comparison
-- failure handling
-- post-action dry runs
-- approval flow
-- Slack execution
-- Monday execution
+Run the offline eval runner:
+
+```bash
+docker compose exec api python -m app.evals.runner
+```
+
+Read the generated eval report:
+
+```bash
+docker compose exec api cat /app/app/evals/eval_report.json
+```
 
 ## Guardrails
 
@@ -263,22 +197,9 @@ The project includes several guardrails to avoid weak or unsafe execution:
 - external actions support `dry_run`
 - approval can be required before write actions
 
-## Observability and traceability
-
-The project stores:
-- selected tool
-- tool arguments
-- tool outputs
-- success or failure state
-- error messages
-- approval status
-- final response
-
-This makes it possible to inspect the full agent workflow rather than only the final answer.
-
 ## Current status
 
-This project is a strong MVP for a document intelligence and workflow automation system.
+This project is a strong MVP for document intelligence and workflow automation.
 
 The core runtime flow is implemented and validated:
 - ingestion
@@ -288,22 +209,8 @@ The core runtime flow is implemented and validated:
 - agent orchestration
 - post-actions
 - approval flow
+- offline evaluation
 
 TXT-based end-to-end flows are the most validated during testing.
 
 PDF and DOCX are supported in the ingestion pipeline, and parsing quality for more complex real-world files remains an area for continued improvement.
-
-
-## Why this project matters
-
-This project goes beyond basic chat-with-documents demos.
-
-It combines:
-- semantic retrieval
-- tool-based agent orchestration
-- structured outputs
-- source grounding
-- workflow automation
-- human approval before external actions
-
-That makes it much closer to a real AI system used in business workflows than a simple RAG prototype.
